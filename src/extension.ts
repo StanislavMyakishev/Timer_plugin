@@ -3,6 +3,8 @@
 import * as vscode from 'vscode';
 
 
+
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -13,43 +15,105 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('extension.helloWorld', () => {
+	let initTimer = vscode.commands.registerCommand('extension.initTimer', () => {
 		// The code you place here will be executed every time your command is executed
 		const wsedit = new vscode.WorkspaceEdit(); // creating editor
-		if(vscode.workspace.workspaceFolders) {		// check if we have opened project
-		const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath; // gets the path of the first workspace folder
-		const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json'); // creat a 'object' folder with json file
-		//wsedit.deleteFile(filePath,{recursive: true});
-		wsedit.createFile(filePath, { ignoreIfExists: true }); // creating
-		// get information from timerConfig.json if text exist alert, else add config info and alert
-		vscode.workspace.openTextDocument(filePath).then((document) => {
-			let text = document.getText();
-			if(text ===''){
-				let config = {
-					'onStartUp': true,
-					'weekdayTimer':  50,
-					'weekendTimer': 120,
-					'alertMessage': 'Don’t forget to rest!'
-				};
-				const position = new vscode.Position(0,0); // create a start position
-				vscode.workspace.applyEdit(wsedit); // applying edits
-				wsedit.insert(filePath,position,JSON.stringify(config, null, ' '));	//insert config info at config.json
-				vscode.workspace.applyEdit(wsedit);
-				vscode.window.showInformationMessage('Created a new file: /settings/timerConfig.json');
-			}
-			else{
-				vscode.window.showInformationMessage('File /settings/timerConfig.json already exist and filled up');
-			}
-		}); 
-		vscode.workspace.applyEdit(wsedit); // applying edits
+		if (vscode.workspace.workspaceFolders) {		// check if we have opened project
+			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath; // gets the path of the first workspace folder
+			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json'); // creat a 'object' folder with json file
+			wsedit.createFile(filePath, { ignoreIfExists: true }); // creating
+
+			// get information from timerConfig.json if text exist alert, else add config info and alert 
+			// we use setTimeout for a little delay because we need time for creating our file
+			setTimeout(() => vscode.workspace.openTextDocument(filePath).then((document) => {
+				let text = document.getText();
+				if (text === '') {
+					let config = {
+						'onStartUp': true,
+						'weekdayTimer': 50,
+						'weekendTimer': 120,
+						'alertMessage': 'Don’t forget to rest!'
+					};
+					const position = new vscode.Position(0, 0); // create a start position
+					wsedit.insert(filePath, position, JSON.stringify(config, null, ' '));	//insert config info at config.json
+					vscode.workspace.applyEdit(wsedit);
+					vscode.window.showInformationMessage('Created a new file: /settings/timerConfig.json');
+				}
+				else {
+					vscode.window.showInformationMessage('File /settings/timerConfig.json already exist and filled up');
+				}
+			}), 100);
+			vscode.workspace.applyEdit(wsedit); // applying edits
 		}
-		else{
+		else {
 			vscode.window.showInformationMessage('Open some project');
 		}
 	});
+	let startWeekday = vscode.commands.registerCommand('extension.startWeekday', () => {
+		if (vscode.workspace.workspaceFolders) {
+			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json');
+			vscode.workspace.openTextDocument(filePath).then((document) => {
+				let text = document.getText(); // get info from config.json file
+				let obj = JSON.parse(text); // conver txt file to json obj
+				if (obj.weekdayTimer && obj.alertMessage) { // check if we have parametrs
+					let time = obj.weekdayTimer;
+					let message = obj.alertMessage;
+					// alert message to rest 
+					function displayAlert(time: number, message: string) {
+						vscode.window.showInformationMessage('Timer for weekday started');
+						setInterval(() => vscode.window.showInformationMessage(message), time * 60000);
+					}
+					displayAlert(time, message);
+				}
+				else {
+					vscode.window.showInformationMessage('Some problem with timerConfig.json');
+				}
+			});
+		}
+		else {
+			vscode.window.showInformationMessage('Open some project');
+		}
 
-	context.subscriptions.push(disposable);
+	});
+	let startWeekend = vscode.commands.registerCommand('extension.startWeekend', () => {
+		if (vscode.workspace.workspaceFolders) {
+			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json');
+			// We need some function for check if file exists Stosyn task for you!
+			// console.log(vscode.workspace.findFiles(filePath.path).then((val) => {
+			// 	return val;
+			// }));
+			console.log(wsPath);
+			vscode.workspace.openTextDocument(filePath).then((document) => {
+				let text = document.getText(); // get info from config.json file
+				let obj = JSON.parse(text); // conver txt file to json obj
+				if (obj.weekendTimer !== 0 && obj.alertMessage !== '') { // check if we have parametrs
+					let time = obj.weekendTimer;
+					let message = obj.alertMessage;
+					// alert message to rest 
+					function displayAlert(time: number, message: string) {
+						vscode.window.showInformationMessage('Timer for weekend day started');
+						setInterval(() => vscode.window.showInformationMessage(message), time * 60000);
+					}
+					displayAlert(time, message);
+				}
+				else {
+					vscode.window.showInformationMessage('Some problem with timerConfig.json');
+				}
+			});
+
+
+		}
+		else {
+			vscode.window.showInformationMessage('Open some project');
+		}
+
+	});
+	context.subscriptions.push(initTimer);
+	context.subscriptions.push(startWeekday);
+	context.subscriptions.push(startWeekend);
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
