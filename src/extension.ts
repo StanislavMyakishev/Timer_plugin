@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-
+import { callbackify } from 'util';
 
 
 
@@ -22,7 +22,6 @@ export function activate(context: vscode.ExtensionContext) {
 			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath; // gets the path of the first workspace folder
 			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json'); // creat a 'object' folder with json file
 			wsedit.createFile(filePath, { ignoreIfExists: true }); // creating
-
 			// get information from timerConfig.json if text exist alert, else add config info and alert 
 			// we use setTimeout for a little delay because we need time for creating our file
 			setTimeout(() => vscode.workspace.openTextDocument(filePath).then((document) => {
@@ -40,7 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
 					vscode.window.showInformationMessage('Created a new file: /settings/timerConfig.json');
 				}
 				else {
-					vscode.window.showInformationMessage('File /settings/timerConfig.json already exist and filled up');
+					vscode.window.showErrorMessage('File /settings/timerConfig.json already exist and filled up');
 				}
 			}), 100);
 			vscode.workspace.applyEdit(wsedit); // applying edits
@@ -56,23 +55,34 @@ export function activate(context: vscode.ExtensionContext) {
 			vscode.workspace.openTextDocument(filePath).then((document) => {
 				let text = document.getText(); // get info from config.json file
 				let obj = JSON.parse(text); // conver txt file to json obj
-				if (obj.weekdayTimer && obj.alertMessage) { // check if we have parametrs
+				if (obj.weekdayTimer > 0 && obj.alertMessage !== '' && obj.onStartUp === true) { // check if we have parametrs
 					let time = obj.weekdayTimer;
 					let message = obj.alertMessage;
 					// alert message to rest 
 					function displayAlert(time: number, message: string) {
 						vscode.window.showInformationMessage('Timer for weekday started');
-						setInterval(() => vscode.window.showInformationMessage(message), time * 60000);
+						const interval = setInterval(function () {
+							let text = document.getText();
+							let obj = JSON.parse(text);
+							if (obj.onStartUp !== true) {
+								clearInterval(interval);
+							}
+							else {
+								vscode.window.showInformationMessage(message);
+							}
+						}, time * 60000);
 					}
 					displayAlert(time, message);
 				}
 				else {
-					vscode.window.showInformationMessage('Some problem with timerConfig.json');
+					vscode.window.showErrorMessage('Some problem in timerConfig.json with weekdayTimer value or alertMessage value or obj.onStartUp value');
 				}
+			}).then(undefined, err => {
+				vscode.window.showErrorMessage(String(err));
 			});
 		}
 		else {
-			vscode.window.showInformationMessage('Open some project');
+			vscode.window.showErrorMessage('Open some project');
 		}
 
 	});
@@ -80,39 +90,73 @@ export function activate(context: vscode.ExtensionContext) {
 		if (vscode.workspace.workspaceFolders) {
 			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
 			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json');
-			// We need some function for check if file exists Stosyn task for you!
-			// console.log(vscode.workspace.findFiles(filePath.path).then((val) => {
-			// 	return val;
-			// }));
-			console.log(wsPath);
 			vscode.workspace.openTextDocument(filePath).then((document) => {
 				let text = document.getText(); // get info from config.json file
 				let obj = JSON.parse(text); // conver txt file to json obj
-				if (obj.weekendTimer !== 0 && obj.alertMessage !== '') { // check if we have parametrs
+				if (obj.weekendTimer > 0 && obj.alertMessage !== '' && obj.onStartUp === true) { // check if we have parametrs
 					let time = obj.weekendTimer;
 					let message = obj.alertMessage;
 					// alert message to rest 
 					function displayAlert(time: number, message: string) {
 						vscode.window.showInformationMessage('Timer for weekend day started');
-						setInterval(() => vscode.window.showInformationMessage(message), time * 60000);
+						const interval = setInterval(function () {
+							let text = document.getText();
+							let obj = JSON.parse(text);
+							if (obj.onStartUp !== true) {
+								clearInterval(interval);
+							}
+							else {
+								vscode.window.showInformationMessage(message);
+							}
+						}, time * 60000);
 					}
 					displayAlert(time, message);
 				}
 				else {
-					vscode.window.showInformationMessage('Some problem with timerConfig.json');
-				}
+					vscode.window.showErrorMessage('Some problem in timerConfig.json with weekendTimer value or alertMessage value or obj.onStartUp value');
+				}// handle error
+			}).then(undefined, err => {
+				vscode.window.showErrorMessage(String(err));
 			});
 
 
 		}
 		else {
-			vscode.window.showInformationMessage('Open some project');
+			vscode.window.showErrorMessage('Open some project');
+		}
+
+	});
+	let stopTimer = vscode.commands.registerCommand('extension.stopTimer', () => {
+		const wsedit = new vscode.WorkspaceEdit();
+		if (vscode.workspace.workspaceFolders) {
+			const wsPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+			const filePath = vscode.Uri.file(wsPath + '/settings/timerConfig.json');
+			const position = new vscode.Position(0, 0); // create a start position
+			vscode.workspace.openTextDocument(filePath).then((document) => {
+				let text = document.getText(); // get info from config.json file
+				let obj = JSON.parse(text); // conver txt file to json obj
+				if (obj.onStartUp === true) {
+					obj.onStartUp = false;
+					let voidStr = new Uint8Array(0); // clear
+					vscode.workspace.fs.writeFile(filePath, voidStr);	//clear
+					vscode.workspace.applyEdit(wsedit);
+					setTimeout(() => wsedit.insert(filePath, position, JSON.stringify(obj, null, ' ')), 100);	//insert config info at config.json with onStartUp: false
+					vscode.window.showInformationMessage('Timer stoped');
+					setTimeout(() => vscode.workspace.applyEdit(wsedit), 300);
+				}
+				else {
+					vscode.window.showErrorMessage('Timer already stoped onStartUp: false');
+				}
+			}).then(undefined, err => {
+				vscode.window.showErrorMessage(String(err));
+			});
 		}
 
 	});
 	context.subscriptions.push(initTimer);
 	context.subscriptions.push(startWeekday);
 	context.subscriptions.push(startWeekend);
+	context.subscriptions.push(stopTimer);
 }
 
 // this method is called when your extension is deactivated

@@ -12,7 +12,8 @@
     "activationEvents": [
         "onCommand:extension.initTimer",
         "onCommand:extension.startWeekday",
-        "onCommand:extension.startWeekend"
+        "onCommand:extension.startWeekend",
+        "onCommand:extension.stopTimer"
     ],
     "main": "./out/extension.js",
     "contributes": {
@@ -27,6 +28,10 @@
             {
                 "command": "extension.startWeekend",
                 "title": "Start Timer Weekend Day"
+            },
+            {
+                "command": "extension.stopTimer",
+                "title": "Stop Timer"
             }
         ]
     },
